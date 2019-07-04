@@ -1,0 +1,5 @@
+# ninja log v5
+1	867	1562237473	CMakeFiles/utest.dir/utest/main.cc.o	a951f5cfaf2c64e0
+876	1116	1562237473	utest	b234434ec886557c
+3	732	1562237544	CMakeFiles/utest.dir/utest/main.cc.o	a951f5cfaf2c64e0
+732	1003	1562237544	utest	b234434ec886557c

@@ -1,0 +1,3 @@
+/mnt/d/wjp/ExactlyOnce/build/CMakeFiles/rebuild_cache.dir
+/mnt/d/wjp/ExactlyOnce/build/CMakeFiles/utest.dir
+/mnt/d/wjp/ExactlyOnce/build/CMakeFiles/edit_cache.dir

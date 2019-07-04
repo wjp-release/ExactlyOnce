@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdint>
 
+#include <iostream>
 #include <memory>
 
 
@@ -41,5 +42,10 @@ namespace wjp{
     // 全局常量
     const static int kPageSize = 4096;
 
+    static inline char* malloc64(ub4 size){
+        void* p;
+        if (!posix_memalign(&p, 64, size)) return (char*)p;
+        else return nullptr;
+    }
 
 }
