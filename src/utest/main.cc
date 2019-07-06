@@ -5,7 +5,7 @@
 using namespace wjp;
 
 int main(){
-    Arena arena;
+    UserBufferArena arena;
     arena.alloc(1000);
 
     return 0;
