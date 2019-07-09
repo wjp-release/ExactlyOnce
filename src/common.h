@@ -5,6 +5,8 @@
 #include <cassert>
 #include <cstdint>
 
+#include <functional>
+#include <stdexcept>
 #include <iostream>
 #include <memory>
 
