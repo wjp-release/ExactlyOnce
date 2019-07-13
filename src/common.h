@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 typedef int64_t  sb8;
 typedef int32_t  sb4;
@@ -24,6 +25,7 @@ typedef uint8_t  ub1;
 namespace wjp{
     // 全局常量
     const static int kPageSize = 4096;
+    const static int kPageSizeOrder = 12;
 
 
 }
