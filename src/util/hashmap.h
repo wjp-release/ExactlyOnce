@@ -156,7 +156,7 @@ public:
     };
 
     Hashmap(){
-        tables[0].initBuckets(); // rehash table remains uninited
+        tables[0].initBuckets(); // rehash table must remain uninited
     }
 
     Iterator begin(){
@@ -173,6 +173,48 @@ public:
         return size() == 0;
     }
 
+    bool exists(const K& key){
+        return !find(key);
+    }
+
+    Entry* find(const K& key){
+        if (empty()) return nullptr;
+        rehashOnEveryOperation();
+        ub8 hash = hasher((const ub1*)&key, sizeof(K));
+        auto entry =  tables[0].searchAt(tables[0].mask() & hash, key, this);
+        if (entry) return entry;
+        if (!isRehashing()) return nullptr;
+        return tables[1].searchAt(tables[1].mask() & hash, key, this);
+    }
+
+    // Find key, but if it does not exist, place and return a new entry,
+    // which has its key set. Caller should set its value immediately.
+    Entry* findOrCreateNew(const K& key, bool* existing = nullptr){
+        rehashOnEveryOperation();
+        if (existing) *existing = true;
+        ub8 hash = hasher((const ub1*)&key, sizeof(K));
+        ub4 index = tables[0].mask() & hash;
+        Entry* entry = tables[0].searchAt(index, key, this);
+        if (entry) return entry;
+        if (isRehashing()){
+            index = tables[1].mask() & hash;
+            Entry* entry = tables[1].searchAt(index, key, this);
+            if (entry) return entry;
+        }
+        // search failed, now we insert new entry
+        if (existing) *existing = false;
+        Table& which = isRehashing() ? tables[1] : tables[0];
+        auto newEntry =  which.createNewEntryAt(index);
+        newEntry->key = key;
+        return newEntry;
+    }
+
+    V& operator[](const K& key){
+        Entry* entry = findOrCreateNew(key);
+        assert(entry);
+        return entry->value;
+    }
+
     ub4 size(){
         return tables[0].used + tables[1].used;
     }
@@ -187,11 +229,82 @@ public:
         ub4 index = tables[0].mask() & hash;
         Entry* entry = tables[0].removeAt(index, key, this);
         if (entry) return entry;
-        return nullptr;
+        if (isRehashing()){
+            index = tables[1].mask() & hash;
+            Entry* entry = tables[1].removeAt(index, key, this);
+            if (entry) return entry;
+        }
+        return nullptr; // key not found
     }
     
-
 private:
+    static const int kRehashRatio = 100;
+
+    void rehash(int n = 1){
+        if (nriters || isRehashing()) return false;
+        int empty_visits = n << 5; // at most 32 empty visits
+        for (; n != 0 && tables[0].used != 0; n--){
+            assert(tables[0].capacity() > (ub4)rehashid);
+            while (tables[0].buckets[rehashid] == nullptr){
+                rehashid++;
+                if (--empty_visits == 0) return true;
+            } // now we find an non-empty bucket
+            auto entry = tables[0].buckets[rehashid];
+            while (entry){
+                auto next = entry->next;
+                ub8 hash = hasher((const ub1*)&key, sizeof(K));
+                ub4 hashid = hash & tables[1].mask();
+                tables[1].add(entry, hashid);
+                tables[0].used--;
+                entry = next;
+            }
+            tables[0].buckets[rehashid] = nullptr;
+            rehashid++;
+        }
+        if (tables[0].used == 0){ // rehash finished
+            free(tables[0].buckets);
+            tables[0] = tables[1];
+            tables[1].reset();
+            rehashid = -1;
+        }
+        return true;
+    }
+
+    void rehashOnEveryOperation(){
+        if (isRehashing()) rehash();
+        else{
+            if (needsRehashing()){
+                startsRehashing();
+                rehash(); // rehash once on initial rehash
+            }
+        }
+    }
+
+    bool needsRehashing(){
+        return tables[0].used >= kRehashRatio / 100 * tables[0].capacity();
+    }
+
+    bool startsRehashing(){
+        assert(tables[0].bucketsInited());
+        if (isRehashing()) return false;
+        tables[1].order = tables[0].order + 1;
+        tables[1].initBuckets();
+        rehashid = 0;
+        return true;
+    }
+
+    bool isRehashing(){
+        return rehashid != -1;
+    }
+
+    bool equal(const K& k1, const K& k2){
+        return (!lesspred(k1, k2)) && (!lesspred(k2, k1));
+    }
+
+    Less lesspred;
+    Hash hasher;
+    Table tables[2];
+    int rehashid = -1; // next id in tables[0].buckets to rehash
     ub4 nriters = 0;
 };
 
